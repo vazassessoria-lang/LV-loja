@@ -1,0 +1,27 @@
+name = "lv-loja"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+account_id = "932e4ee385915f48e933e7dc172ef43f"
+workers_dev = true
+
+# Arquivos fixos (CSS, JS, logo) servidos direto da Cloudflare.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Banco da loja (catalogo sincronizado + cotacoes). Criado em 19/11/2026.
+[[d1_databases]]
+binding = "DB"
+database_name = "lv-loja-db"
+database_id = "761e2500-1dea-41c4-89f2-d37044b65069"
+
+# Sincroniza o catalogo do painel a cada 30 min.
+[triggers]
+crons = ["*/30 * * * *"]
+
+[vars]
+# Painel (lv-dashboard) fornece catalogo (Nuvemshop + prazo do Bling) e frete (Correios).
+DASHBOARD_URL = "https://lv-dashboard.vazassessoria.workers.dev"
+# Enquanto a loja roda em paralelo a Nuvemshop: escondida do Google (noindex + robots).
+LOJA_NOINDEX = "1"
+FRETE_GRATIS_ACIMA = "599"
