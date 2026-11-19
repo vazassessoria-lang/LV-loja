@@ -30,6 +30,11 @@ const PAINEL = { async fetch(rq) {
     if (!c || painel.saiu === b.device) return J({ ok: false, error: 'sessao_invalida' }, 401);
     return J({ ok: true, cliente: { cpf, nome: c.nome, email: c.email, celular: '11999990000', pontos: 820 }, pedidos: [{ data: '2026-11-10', total: 259.99, status: 'closed', pagamento: 'paid', itens: [{ nome: 'Blusa Plissada', qtd: 1 }] }] });
   }
+  if (u.pathname === '/api/loja/cep') {
+    const cep = u.searchParams.get('cep');
+    if (cep === '01310100') return J({ ok: true, cep, rua: 'Avenida Paulista', bairro: 'Bela Vista', cidade: 'São Paulo', uf: 'SP' });
+    return J({ ok: false, error: 'CEP nao encontrado' }, 404);
+  }
   if (u.pathname === '/api/loja/conta/sair') { painel.saiu = b.device; return J({ ok: true }); }
   return J({ ok: false }, 404);
 } };
@@ -93,6 +98,27 @@ assert.equal(r.st, 302); assert.equal(r.h.get('location'), '/conta/'); assert.eq
 assert.equal(env.DB._db.prepare('SELECT cpf FROM sacolas').get().cpf, '52998224725', 'sacola ficou com o CPF');
 r = await req('/conta/'); assert.match(r.t, /Olá, Maria!/); assert.match(r.t, /820/); assert.match(r.t, /\*\*\*\.982\.247-\*\*/); assert.match(r.t, /Blusa Plissada/);
 r = await req('/carrinho/'); assert.match(r.t, /Olá, Maria!/);
+// enderecos
+r = await req('/api/cep?cep=01310-100'); assert.deepEqual([r.j.rua, r.j.cidade, r.j.uf], ['Avenida Paulista', 'São Paulo', 'SP']);
+r = await req('/api/cep?cep=99999999'); assert.equal(r.st, 404); assert.match(r.j.erro, /não encontrado/);
+r = await req('/api/conta/enderecos', { method: 'POST', body: { cep: '01310-100', rua: 'Avenida Paulista', numero: '', bairro: 'Bela Vista', cidade: 'São Paulo', uf: 'SP', destinatario: 'Maria Silva' } });
+assert.equal(r.st, 400); assert.match(r.j.erro, /número/);
+r = await req('/api/conta/enderecos', { method: 'POST', body: { cep: '01310-100', rua: 'Avenida Paulista', numero: '1000', complemento: 'apto 5', bairro: 'Bela Vista', cidade: 'São Paulo', uf: 'sp', destinatario: 'Maria Silva <b>' } });
+assert.equal(r.j.ok, true); assert.equal(r.j.enderecos[0].principal, 1, 'primeiro vira principal'); assert.equal(r.j.enderecos[0].uf, 'SP');
+assert.equal(r.j.enderecos[0].destinatario, 'Maria Silva b', 'sem < >');
+r = await req('/api/conta/enderecos', { method: 'POST', body: { cep: '13010000', rua: 'Rua Barão de Jaguara', numero: '50', bairro: 'Centro', cidade: 'Campinas', uf: 'SP', destinatario: 'Mãe da Maria', principal: true } });
+assert.equal(r.j.enderecos.length, 2); assert.equal(r.j.enderecos[0].cidade, 'Campinas', 'novo principal vem primeiro'); assert.equal(r.j.enderecos[1].principal, 0);
+const idSP = r.j.enderecos[1].id, idCamp = r.j.enderecos[0].id;
+r = await req('/api/conta/enderecos', { method: 'POST', body: { acao: 'principal', id: idSP } }); assert.equal(r.j.enderecos[0].id, idSP);
+r = await req('/api/conta/enderecos', { method: 'POST', body: { id: idCamp, cep: '13010000', rua: 'Rua Barão de Jaguara', numero: '60', bairro: 'Centro', cidade: 'Campinas', uf: 'SP', destinatario: 'Mãe da Maria' } });
+assert.equal(r.j.enderecos.find((e) => e.id === idCamp).numero, '60', 'editou');
+r = await req('/conta/'); assert.match(r.t, /Meus endereços/); assert.match(r.t, /Avenida Paulista, 1000 - apto 5/); assert.match(r.t, /Principal/);
+r = await req('/api/conta/enderecos', { method: 'POST', body: { acao: 'remover', id: idSP } });
+assert.equal(r.j.enderecos.length, 1); assert.equal(r.j.enderecos[0].principal, 1, 'removeu o principal: o outro assume');
+// outra cliente nao mexe no endereco da Maria
+const jarMaria = jar; jar = { lv_conta: 'dev99999999999' };
+r = await req('/api/conta/enderecos', { method: 'POST', body: { acao: 'remover', id: idCamp } }); assert.equal(r.st, 401);
+jar = jarMaria;
 // cliente nova
 r = await req('/api/conta/entrar', { method: 'POST', body: { cpf: '111.444.777-35' } }); assert.equal(r.j.existe, false);
 r = await req('/api/conta/cadastrar', { method: 'POST', body: { cpf: '529.982.247-25', nome: 'X', email: 'x@x.com', celular: '11999999999' } }); assert.equal(r.st, 409);
