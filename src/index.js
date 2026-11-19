@@ -7,7 +7,7 @@ import { COOKIE_SACOLA, lerCookie, cookie, novoId, resumo, alterar, vincularCpf 
 import { COOKIE_CONTA, cpfValido, cpfMascarado, clienteLogada } from './conta.js';
 import { painelPost } from './catalogo.js';
 
-const VERSAO = '0.2.0';
+const VERSAO = '0.2.1';
 
 function html(env, corpo, status, privada, extra) {
   const h = Object.assign({ 'content-type': 'text/html; charset=utf-8', 'cache-control': privada ? 'private, no-store' : 'public, max-age=60' }, extra || {});
@@ -151,6 +151,8 @@ export default {
     try { return await rotear(request, env, ctx); }
     catch (e) {
       console.error('[loja] ' + e.message);
+      // API sempre responde JSON (o navegador mostra a mensagem em vez de "sem conexao")
+      if (new URL(request.url).pathname.indexOf('/api/') === 0) return json({ ok: false, erro: 'Erro temporário. Tente de novo em instantes.' }, 500);
       return new Response('Erro temporário. Tente de novo em instantes.', { status: 500, headers: { 'content-type': 'text/plain; charset=utf-8' } });
     }
   },

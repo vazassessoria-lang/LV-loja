@@ -85,4 +85,8 @@ let viaBinding = 0;
 const envB = Object.assign({}, env, { PAINEL: { fetch: async (rq) => { viaBinding++; assert.match(rq.url, /\/api\/loja\/frete/); return new Response(JSON.stringify({ ok: true, opcoes: [{ servico: 'PAC', preco: 10, prazo_dias_uteis: 3 }] })); } } });
 const rb = await worker.fetch(new Request('https://loja.teste/api/frete?produto=9&cep=01310100'), envB, {});
 assert.equal(rb.status, 200); assert.equal(viaBinding, 1);
+// erro inesperado em /api/* volta JSON (nao texto)
+const envQuebrado = Object.assign({}, env, { DB: { prepare() { throw new Error('D1 fora'); }, batch() { throw new Error('D1 fora'); } } });
+const rq = await worker.fetch(new Request('https://loja.teste/api/frete?produto=9&cep=01310100'), envQuebrado, {});
+assert.equal(rq.status, 500); assert.match((await rq.json()).erro, /Erro temporário/);
 console.log('OK - todos os testes da loja passaram');
