@@ -4,7 +4,7 @@ import { garantirSchema, sincronizar, produtoPorHandle, produtoPorId, categoriaP
 import { cotarFrete } from './frete.js';
 import { MENU, home, paginaCategoria, paginaProduto, paginaBusca, pagina404, paginaSimples } from './views.js';
 
-const VERSAO = '0.1.0';
+const VERSAO = '0.1.1';
 
 function html(env, corpo, status) {
   const h = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=60' };
@@ -43,7 +43,8 @@ async function rotear(request, env, ctx) {
   }
   if (path === '/api/admin/sync' && request.method === 'POST') {
     if (!chaveOk(request, env)) return json({ ok: false, erro: 'nao autorizado' }, 401);
-    return json(Object.assign({ ok: true }, await sincronizar(env)));
+    try { return json(Object.assign({ ok: true }, await sincronizar(env))); }
+    catch (e) { return json({ ok: false, erro: String(e.message).slice(0, 400) }, 500); }
   }
   // --- paginas ---
   if (path === '/') {

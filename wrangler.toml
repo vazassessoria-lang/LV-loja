@@ -15,6 +15,12 @@ binding = "DB"
 database_name = "lv-loja-db"
 database_id = "761e2500-1dea-41c4-89f2-d37044b65069"
 
+# Ligacao interna com o painel: Worker nao chama outro Worker da mesma conta pelo workers.dev
+# (a Cloudflare bloqueia); o Service Binding resolve sem passar pela internet.
+[[services]]
+binding = "PAINEL"
+service = "lv-dashboard"
+
 # Sincroniza o catalogo do painel a cada 30 min.
 [triggers]
 crons = ["*/30 * * * *"]

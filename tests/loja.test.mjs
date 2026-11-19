@@ -57,7 +57,8 @@ db.prepare(`INSERT INTO produtos (id, handle, nome, descricao, preco, preco_de, 
 db.prepare('INSERT INTO produto_categoria VALUES (9,101)').run();
 const chamadas = [];
 globalThis.fetch = async (u, o) => {
-  chamadas.push({ u: String(u), h: o && o.headers });
+  const rq = u instanceof Request ? u : null;
+  chamadas.push({ u: String(rq ? rq.url : u), h: rq ? Object.fromEntries(rq.headers) : (o && o.headers) });
   return new Response(JSON.stringify({ ok: true, opcoes: [{ servico: 'PAC', preco: 17.17, prazo_dias_uteis: 5 }, { servico: 'SEDEX', preco: 11.15, prazo_dias_uteis: 1 }] }), { status: 200 });
 };
 const get = async (p) => { const r = await worker.fetch(new Request('https://loja.teste' + p, { redirect: 'manual' }), env, {}); return [r.status, await r.text(), r.headers]; };
@@ -74,9 +75,14 @@ assert.ok(!/#22c55e|#1D9E75|green/i.test(corpo), 'nunca verde');
 [st, corpo] = await get('/api/frete?produto=9&variante=2&cep=01310-100');
 const j = JSON.parse(corpo);
 assert.equal(st, 200); assert.equal(j.opcoes[0].servico, 'SEDEX'); assert.equal(j.opcoes[0].dias_producao, 0);
-assert.match(chamadas[0].u, /\/api\/loja\/frete\?cep=01310100&peso=400$/); assert.equal(chamadas[0].h['X-Scheduler-Key'], 'lvprod-9Mn4Vy3Q');
+assert.match(chamadas[0].u, /\/api\/loja\/frete\?cep=01310100&peso=400$/); assert.equal(chamadas[0].h['x-scheduler-key'], 'lvprod-9Mn4Vy3Q');
 [st, corpo] = await get('/api/frete?produto=9&variante=1&cep=01310100');
 assert.equal(JSON.parse(corpo).opcoes[0].dias_producao, 2, 'variante sob encomenda');
 [st, corpo] = await get('/api/frete?produto=9&cep=123');  assert.equal(st, 400); assert.match(JSON.parse(corpo).erro, /8 números/);
 const r = await worker.fetch(new Request('https://loja.teste/api/admin/sync', { method: 'POST' }), env, {}); assert.equal(r.status, 401);
+// com Service Binding (producao) a chamada vai por env.PAINEL, nao pela internet
+let viaBinding = 0;
+const envB = Object.assign({}, env, { PAINEL: { fetch: async (rq) => { viaBinding++; assert.match(rq.url, /\/api\/loja\/frete/); return new Response(JSON.stringify({ ok: true, opcoes: [{ servico: 'PAC', preco: 10, prazo_dias_uteis: 3 }] })); } } });
+const rb = await worker.fetch(new Request('https://loja.teste/api/frete?produto=9&cep=01310100'), envB, {});
+assert.equal(rb.status, 200); assert.equal(viaBinding, 1);
 console.log('OK - todos os testes da loja passaram');

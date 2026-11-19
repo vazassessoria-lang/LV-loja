@@ -22,9 +22,11 @@ export async function garantirSchema(env) {
 function chaveDashboard(env) { return env.DASHBOARD_KEY || 'lvprod-9Mn4Vy3Q'; }
 
 export async function painel(env, caminho) {
-  const r = await fetch(env.DASHBOARD_URL + caminho, {
+  const req = new Request(env.DASHBOARD_URL + caminho, {
     headers: { 'X-Scheduler-Key': chaveDashboard(env), 'User-Agent': 'Mozilla/5.0 (compatible; LV-Loja/0.1)' },
   });
+  // Service Binding (producao) — fetch direto so no teste local
+  const r = env.PAINEL ? await env.PAINEL.fetch(req) : await fetch(req);
   const j = await r.json().catch(() => ({ ok: false, error: 'resposta invalida (HTTP ' + r.status + ')' }));
   if (!r.ok || j.ok === false) throw new Error('painel ' + caminho.split('?')[0] + ': ' + (j.error || 'HTTP ' + r.status));
   return j;
