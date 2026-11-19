@@ -24,9 +24,15 @@
     inp.addEventListener('input', function () { var d = inp.value.replace(/\D/g, '').slice(0, 8); inp.value = d.length > 5 ? d.slice(0, 5) + '-' + d.slice(5) : d; });
     try { var salvo = localStorage.getItem('lv_cep'); if (salvo && !inp.value) inp.value = salvo; } catch (e) {}
   };
+  var buscarJson = function (url, tentativas) {
+    return fetch(url, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).catch(function (e) {
+      if (tentativas > 0) return new Promise(function (ok) { setTimeout(ok, 1500); }).then(function () { return buscarJson(url, tentativas - 1); });
+      throw e;
+    });
+  };
   var mostrarFrete = function (res, url, cep) {
     res.innerHTML = '<p class="fr-nota">Calculando…</p>';
-    fetch(url, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+    buscarJson(url, 1).then(function (j) {
       if (!j.ok) { res.innerHTML = '<p class="fr-erro">' + esc(j.erro || 'Não foi possível calcular.') + '</p>'; return; }
       try { localStorage.setItem('lv_cep', cep); } catch (e) {}
       res.innerHTML = j.opcoes.map(function (o) {

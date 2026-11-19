@@ -83,7 +83,7 @@ ${menuDrawer()}
 </footer>
 <p class="copyright">Nicole Riccio Vaz Ltda · CNPJ 22.766.280/0001-86</p>
 <a class="whats" href="https://wa.me/${WHATS}" aria-label="WhatsApp">${ICONE.whats}</a>
-<script src="/static/loja.js?v=2" defer></script>
+<script src="/static/loja.js?v=3" defer></script>
 </body></html>`;
 }
 
