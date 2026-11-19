@@ -32,6 +32,19 @@ export async function painel(env, caminho) {
   return j;
 }
 
+// POST pro painel devolvendo status + corpo (conta da cliente: 400/401/409 tem significado).
+export async function painelPost(env, caminho, corpo) {
+  const req = new Request(env.DASHBOARD_URL + caminho, {
+    method: 'POST',
+    headers: { 'X-Scheduler-Key': chaveDashboard(env), 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; LV-Loja/0.2)' },
+    body: JSON.stringify(corpo || {}),
+  });
+  const r = env.PAINEL ? await env.PAINEL.fetch(req) : await fetch(req);
+  const j = await r.json().catch(() => ({ ok: false, error: 'resposta invalida (HTTP ' + r.status + ')' }));
+  j.status = r.status;
+  return j;
+}
+
 // Normaliza um produto da Nuvemshop (com campos bling_* do painel) para o formato da loja.
 export function normalizarProduto(p) {
   const variantes = (p.variants || []).map((v) => {

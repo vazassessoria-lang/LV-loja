@@ -55,7 +55,7 @@ ${noindex ? '<meta name="robots" content="noindex, nofollow">' : ''}
 ${o.canonical ? '<link rel="canonical" href="' + esc(o.canonical) + '">' : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/loja.css?v=1">
+<link rel="stylesheet" href="/static/loja.css?v=2">
 <link rel="icon" href="/static/logo.webp">
 ${o.head || ''}
 </head><body>
@@ -83,7 +83,7 @@ ${menuDrawer()}
 </footer>
 <p class="copyright">Nicole Riccio Vaz Ltda · CNPJ 22.766.280/0001-86</p>
 <a class="whats" href="https://wa.me/${WHATS}" aria-label="WhatsApp">${ICONE.whats}</a>
-<script src="/static/loja.js?v=1" defer></script>
+<script src="/static/loja.js?v=2" defer></script>
 </body></html>`;
 }
 
@@ -170,8 +170,9 @@ export function paginaProduto(env, p) {
     ${gruposHtml}
     <script type="application/json" id="vars-json">${JSON.stringify(varsJson).replace(/</g, '\\u003c')}</script>
     <p class="prazo-info" id="prazo-info">${esc(prazoInfo)}</p>
-    <button class="btn btn-comprar" disabled title="Checkout em construção">Comprar — em breve</button>
-    <p class="teste-obs">Loja nova em teste: para comprar agora, use <a href="https://www.leticiavazstore.com.br/produtos/${esc(p.handle)}/">a loja atual</a>.</p>
+    <button class="btn btn-comprar" id="btn-add" ${p.disponivel ? '' : 'disabled'}>${p.disponivel ? 'Adicionar à sacola' : 'Esgotado'}</button>
+    <p class="add-msg" id="add-msg" aria-live="polite"></p>
+    <p class="teste-obs">Loja nova em teste: o pagamento ainda não está ligado. Para comprar agora, use <a href="https://www.leticiavazstore.com.br/produtos/${esc(p.handle)}/">a loja atual</a>.</p>
     <form class="frete" id="frete" autocomplete="on">
       <label for="cep">Calcular frete e prazo</label>
       <div class="frete-linha"><input id="cep" name="cep" inputmode="numeric" autocomplete="postal-code" placeholder="00000-000" maxlength="9"><button class="btn-sec">Calcular</button></div>
@@ -194,4 +195,61 @@ export function pagina404(env) {
 
 export function paginaSimples(env, titulo, texto) {
   return layout(env, { titulo, corpo: '<div class="cab-cat"><h1>' + esc(titulo) + '</h1><p>' + esc(texto) + '</p></div>' });
+}
+
+// ---------- Sacola ----------
+export function paginaSacola(env, r, cliente) {
+  const linhas = r.itens.map((i) => '<div class="sc-item' + (i.disponivel ? '' : ' sc-off') + '">' +
+    (i.imagem ? '<a href="/produtos/' + esc(i.handle) + '/"><img src="' + esc(img(i.imagem, 240)) + '" alt="" width="96" height="144"></a>' : '<span class="sc-semfoto"></span>') +
+    '<div class="sc-info"><a href="/produtos/' + esc(i.handle || '') + '/" class="sc-nome">' + esc(i.nome) + '</a>' +
+    (i.variante ? '<div class="sc-var">' + esc(i.variante) + '</div>' : '') +
+    (i.disponivel ? '<div class="sc-prazo">' + (i.crossdocking === 0 ? 'Pronta entrega' : 'Sob encomenda: ' + i.crossdocking + ' dias úteis de produção') + '</div>' : '<div class="sc-erro">Indisponível (' + esc(i.motivo) + ') — não entra no total</div>') +
+    '<div class="sc-acoes">' + (i.disponivel ? '<div class="qtd"><button data-qtd="' + (i.qtd - 1) + '" data-p="' + i.produto_id + '" data-v="' + i.variante_id + '" aria-label="Diminuir"' + (i.qtd <= 1 ? ' disabled' : '') + '>−</button><span>' + i.qtd + '</span><button data-qtd="' + (i.qtd + 1) + '" data-p="' + i.produto_id + '" data-v="' + i.variante_id + '" aria-label="Aumentar">+</button></div>' : '') +
+    '<button class="sc-rem" data-remover data-p="' + i.produto_id + '" data-v="' + i.variante_id + '">Remover</button></div></div>' +
+    '<div class="sc-preco">' + (i.disponivel ? (i.preco_de ? '<s>' + brl(i.preco_de * i.qtd) + '</s>' : '') + '<b>' + brl(i.subtotal) + '</b>' : '') + '</div></div>').join('');
+  const barra = r.falta_frete_gratis > 0
+    ? '<div class="sc-gratis"><p>Faltam <b>' + brl(r.falta_frete_gratis) + '</b> para o frete grátis</p><div class="barra"><span style="width:' + Math.min(100, Math.round(r.subtotal / r.frete_gratis_acima * 100)) + '%"></span></div></div>'
+    : '<div class="sc-gratis"><p><b>Você ganhou frete grátis</b> (na opção mais barata)</p><div class="barra"><span style="width:100%"></span></div></div>';
+  const corpo = !r.itens.length
+    ? '<div class="cab-cat"><h1>Sacola</h1><p>Sua sacola está vazia.</p><p><a class="btn btn-auto" href="/">Ver novidades</a></p></div>'
+    : '<div class="pg-sacola"><div class="sc-lista"><h1>Sacola</h1>' + (cliente ? '<p class="sc-ola">Olá, ' + esc(String(cliente.cliente.nome || '').split(' ')[0]) + '!</p>' : '') + linhas + '</div>' +
+      '<aside class="sc-resumo">' + barra +
+      '<div class="sc-linha"><span>Subtotal</span><b>' + brl(r.subtotal) + '</b></div>' +
+      '<form class="frete" id="frete-sacola"><label for="cep">Calcular frete e prazo</label><div class="frete-linha"><input id="cep" inputmode="numeric" autocomplete="postal-code" placeholder="00000-000" maxlength="9"><button class="btn-sec">Calcular</button></div><div id="frete-res" aria-live="polite"></div></form>' +
+      '<button class="btn" disabled title="Pagamento em construção">Finalizar compra — em breve</button>' +
+      '<p class="teste-obs">O pagamento (Appmax) ainda está sendo ligado. Para comprar agora, use <a href="https://www.leticiavazstore.com.br/">a loja atual</a>.</p>' +
+      (cliente ? '' : '<p class="sc-entrar"><a href="/conta/">Entre com seu CPF</a> para acompanhar seus pedidos e pontos do LV Club.</p>') +
+      '<a class="sc-continuar" href="/">Continuar comprando</a></aside></div>';
+  return layout(env, { titulo: 'Sacola', corpo, sacola: true });
+}
+
+// ---------- Conta ----------
+export function paginaEntrar(env, msg) {
+  const corpo = '<div class="conta-box"><h1>Minha conta</h1>' +
+    (msg ? '<p class="conta-msg">' + esc(msg) + '</p>' : '') +
+    '<p>Entre com o seu CPF. Enviamos um link de acesso para o seu e-mail — não precisa de senha.</p>' +
+    '<form id="form-entrar" class="conta-form"><label for="cpf">CPF</label><input id="cpf" name="cpf" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" maxlength="14" required>' +
+    '<button class="btn">Receber link de acesso</button></form>' +
+    '<form id="form-cadastro" class="conta-form" hidden><p class="conta-msg">Ainda não temos cadastro com esse CPF. Complete os dados abaixo: enviamos um link para confirmar seu e-mail.</p>' +
+    '<label for="c-nome">Nome completo</label><input id="c-nome" autocomplete="name" required maxlength="120">' +
+    '<label for="c-email">E-mail</label><input id="c-email" type="email" autocomplete="email" required maxlength="160">' +
+    '<label for="c-cel">Celular (WhatsApp)</label><input id="c-cel" inputmode="tel" autocomplete="tel" placeholder="(11) 90000-0000" required maxlength="15">' +
+    '<button class="btn">Criar minha conta</button></form>' +
+    '<div id="conta-res" aria-live="polite"></div>' +
+    '<p class="teste-obs">É a mesma conta do LV Club: seus pontos e pedidos ficam juntos.</p></div>';
+  return layout(env, { titulo: 'Minha conta', corpo });
+}
+
+const STATUS = { open: 'Em andamento', closed: 'Concluído', cancelled: 'Cancelado' };
+const PAGTO = { paid: 'Pago', pending: 'Aguardando pagamento', refunded: 'Reembolsado', partially_refunded: 'Reembolso parcial', voided: 'Cancelado', authorized: 'Autorizado', abandoned: 'Abandonado' };
+export function paginaConta(env, c) {
+  const cl = c.cliente;
+  const peds = (c.pedidos || []).map((p) => '<div class="ped"><div><b>' + esc(p.data.split('-').reverse().join('/')) + '</b> · ' + esc(PAGTO[p.pagamento] || p.pagamento || '') +
+    (p.status && STATUS[p.status] ? ' · ' + esc(STATUS[p.status]) : '') + '<div class="ped-itens">' + p.itens.map((i) => esc(i.qtd + 'x ' + i.nome)).join(', ') + '</div></div><b>' + brl(p.total) + '</b></div>').join('');
+  const corpo = '<div class="conta-box conta-larga"><h1>Olá, ' + esc(String(cl.nome || '').split(' ')[0] || 'cliente') + '!</h1>' +
+    '<div class="conta-cards"><div class="cc"><span>Pontos LV Club</span><b>' + Number(cl.pontos || 0).toLocaleString('pt-BR') + '</b><a href="https://www.leticiavazstore.com.br/lv-club/">Ver prêmios</a></div>' +
+    '<div class="cc"><span>Seus dados</span><div>' + esc(cl.nome || '') + '</div><div>CPF ' + esc(c.cpf_mascarado || '') + '</div><div>' + esc(cl.email || '') + '</div><div>' + esc(cl.celular || '') + '</div></div></div>' +
+    '<h2>Meus pedidos</h2>' + (peds || '<p>Nenhum pedido encontrado com o seu e-mail ainda.</p>') +
+    '<button class="btn-sec sair" id="btn-sair">Sair desta conta</button></div>';
+  return layout(env, { titulo: 'Minha conta', corpo });
 }

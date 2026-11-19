@@ -14,6 +14,9 @@ http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost:' + porta);
   const arq = path.join('public', u.pathname);
   if (u.pathname.startsWith('/static/') && fs.existsSync(arq)) { res.writeHead(200, { 'content-type': tipos[path.extname(arq)] || 'application/octet-stream' }); return res.end(fs.readFileSync(arq)); }
-  const r = await worker.fetch(new Request(u.href, { method: req.method, headers: req.headers }), env, { waitUntil() {} });
+  const partes = []; for await (const c of req) partes.push(c);
+  const corpo = partes.length ? Buffer.concat(partes) : undefined;
+  const r = await worker.fetch(new Request(u.href, { method: req.method, headers: req.headers, body: ['GET', 'HEAD'].includes(req.method) ? undefined : corpo }), env, { waitUntil() {} });
+  if (r.status === 302 || r.status === 301) { res.writeHead(r.status, Object.fromEntries(r.headers)); return res.end(); }
   res.writeHead(r.status, Object.fromEntries(r.headers)); res.end(Buffer.from(await r.arrayBuffer()));
 }).listen(porta, () => console.log('loja local em http://localhost:' + porta));

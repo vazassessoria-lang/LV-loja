@@ -16,7 +16,7 @@ jobs:
       - name: Sintaxe
         run: for f in src/*.js public/static/*.js; do node --check "$f"; done
       - name: Testes
-        run: node --no-warnings tests/loja.test.mjs
+        run: node --no-warnings tests/loja.test.mjs && node --no-warnings tests/sacola_conta.test.mjs
       - name: Instalar Wrangler 4.89 (mesma versao do painel)
         run: npm install -g wrangler@4.89
       - name: Deploy
