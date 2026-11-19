@@ -20,6 +20,14 @@ node --no-warnings tests/servidor_local.mjs     # loja em http://localhost:8787 
 Deploy: push na `main` → GitHub Actions (`.github/workflows/deploy.yml`) → `wrangler deploy`.
 Sincronizar na hora: `POST /api/admin/sync` com `X-Scheduler-Key`.
 
-## Status (19/11/2026, v0.1)
-Pronto: vitrine (home com banners, categorias, busca, produto com cor/tamanho), cálculo de frete e prazo.
-Falta: sacola, checkout (Appmax), conta da cliente, pedido no Bling, trocas (TroqueCommerce), fotos no R2, SEO/sitemap.
+## Sacola e conta (v0.2, 19/11/2026)
+- **Sacola** no servidor (D1 `sacolas`, cookie `lv_sacola`, 90 dias). O navegador só manda produto/variação/quantidade;
+  preço e estoque são sempre recalculados do catálogo. Logada, a sacola leva o CPF (base pro carrinho abandonado).
+- **Conta por CPF** = mesma conta do LV Club (no painel: `loyalty_customers`/`loyalty_devices`). CPF → link de acesso
+  no e-mail (sem senha, 1 h, uso único) → aparelho lembrado 180 dias (cookie `lv_conta`). Cliente nova: cadastro
+  (CPF, nome, e-mail, celular) só vira conta depois do clique no e-mail. Conta mostra pontos do LV Club e pedidos.
+- Páginas pessoais (`/carrinho/`, `/conta/`) são `private, no-store`.
+
+## Status (19/11/2026, v0.2)
+Pronto: vitrine, frete e prazo, sacola, conta da cliente por CPF.
+Falta: checkout/pagamento (Appmax), pedido no Bling, trocas (TroqueCommerce), fotos no R2, SEO/sitemap, endereços salvos.
