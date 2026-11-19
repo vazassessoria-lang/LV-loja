@@ -1,0 +1,26 @@
+name: Deploy LV Loja (Cloudflare)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxe
+        run: for f in src/*.js public/static/*.js; do node --check "$f"; done
+      - name: Testes
+        run: node --no-warnings tests/loja.test.mjs
+      - name: Instalar Wrangler 4.89 (mesma versao do painel)
+        run: npm install -g wrangler@4.89
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: wrangler deploy --keep-vars
