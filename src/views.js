@@ -55,7 +55,7 @@ ${noindex ? '<meta name="robots" content="noindex, nofollow">' : ''}
 ${o.canonical ? '<link rel="canonical" href="' + esc(o.canonical) + '">' : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/loja.css?v=2">
+<link rel="stylesheet" href="/static/loja.css?v=3">
 <link rel="icon" href="/static/logo.webp">
 ${o.head || ''}
 </head><body>
@@ -83,7 +83,7 @@ ${menuDrawer()}
 </footer>
 <p class="copyright">Nicole Riccio Vaz Ltda · CNPJ 22.766.280/0001-86</p>
 <a class="whats" href="https://wa.me/${WHATS}" aria-label="WhatsApp">${ICONE.whats}</a>
-<script src="/static/loja.js?v=3" defer></script>
+<script src="/static/loja.js?v=4" defer></script>
 </body></html>`;
 }
 
@@ -249,7 +249,34 @@ export function paginaConta(env, c) {
   const corpo = '<div class="conta-box conta-larga"><h1>Olá, ' + esc(String(cl.nome || '').split(' ')[0] || 'cliente') + '!</h1>' +
     '<div class="conta-cards"><div class="cc"><span>Pontos LV Club</span><b>' + Number(cl.pontos || 0).toLocaleString('pt-BR') + '</b><a href="https://www.leticiavazstore.com.br/lv-club/">Ver prêmios</a></div>' +
     '<div class="cc"><span>Seus dados</span><div>' + esc(cl.nome || '') + '</div><div>CPF ' + esc(c.cpf_mascarado || '') + '</div><div>' + esc(cl.email || '') + '</div><div>' + esc(cl.celular || '') + '</div></div></div>' +
+    '<h2>Meus endereços</h2><div id="lista-end">' + listaEnderecos(c.enderecos || []) + '</div>' +
+    '<button class="btn-sec" id="btn-novo-end" type="button">+ Adicionar endereço</button>' + formEndereco(cl.nome) +
     '<h2>Meus pedidos</h2>' + (peds || '<p>Nenhum pedido encontrado com o seu e-mail ainda.</p>') +
     '<button class="btn-sec sair" id="btn-sair">Sair desta conta</button></div>';
   return layout(env, { titulo: 'Minha conta', corpo });
+}
+
+export function listaEnderecos(lista) {
+  if (!lista.length) return '<p class="end-vazio">Nenhum endereço salvo ainda.</p>';
+  return lista.map((e) => '<div class="end' + (e.principal ? ' end-principal' : '') + '" data-end=\'' + esc(JSON.stringify(e)) + '\'>' +
+    '<div><b>' + esc(e.destinatario) + '</b>' + (e.principal ? ' <span class="tag">Principal</span>' : '') +
+    '<div>' + esc(e.rua + ', ' + e.numero + (e.complemento ? ' - ' + e.complemento : '')) + '</div>' +
+    '<div>' + esc(e.bairro + ' · ' + e.cidade + '/' + e.uf) + ' · CEP ' + esc(e.cep.slice(0, 5) + '-' + e.cep.slice(5)) + '</div></div>' +
+    '<div class="end-acoes"><button type="button" data-end-editar>Editar</button>' + (e.principal ? '' : '<button type="button" data-end-principal="' + e.id + '">Tornar principal</button>') +
+    '<button type="button" data-end-remover="' + e.id + '">Remover</button></div></div>').join('');
+}
+
+function formEndereco(nome) {
+  const uf = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+  return '<form id="form-end" class="conta-form form-end" hidden><input type="hidden" id="e-id">' +
+    '<label for="e-cep">CEP</label><div class="frete-linha"><input id="e-cep" inputmode="numeric" autocomplete="postal-code" placeholder="00000-000" maxlength="9" required><button type="button" class="btn-sec" id="e-buscar">Buscar</button></div>' +
+    '<a class="nao-sei" href="https://buscacepinter.correios.com.br/app/endereco/index.php" target="_blank" rel="noopener">Não sei meu CEP</a>' +
+    '<label for="e-rua">Rua</label><input id="e-rua" autocomplete="address-line1" required maxlength="160">' +
+    '<div class="duas"><div><label for="e-numero">Número</label><input id="e-numero" required maxlength="20"></div><div><label for="e-comp">Complemento</label><input id="e-comp" maxlength="80" placeholder="Apto, bloco…"></div></div>' +
+    '<label for="e-bairro">Bairro</label><input id="e-bairro" required maxlength="80">' +
+    '<div class="duas"><div><label for="e-cidade">Cidade</label><input id="e-cidade" autocomplete="address-level2" required maxlength="80"></div><div><label for="e-uf">Estado</label><select id="e-uf" required><option value=""></option>' + uf.map((u) => '<option>' + u + '</option>').join('') + '</select></div></div>' +
+    '<label for="e-dest">Quem vai receber</label><input id="e-dest" autocomplete="name" required maxlength="120" value="' + esc(nome || '') + '">' +
+    '<label class="chk"><input type="checkbox" id="e-principal"> Usar como endereço principal</label>' +
+    '<div class="duas"><button class="btn">Salvar endereço</button><button type="button" class="btn-sec" id="e-cancelar">Cancelar</button></div>' +
+    '<div id="end-res" aria-live="polite"></div></form>';
 }

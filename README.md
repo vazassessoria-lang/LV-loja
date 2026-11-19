@@ -28,6 +28,10 @@ Sincronizar na hora: `POST /api/admin/sync` com `X-Scheduler-Key`.
   (CPF, nome, e-mail, celular) só vira conta depois do clique no e-mail. Conta mostra pontos do LV Club e pedidos.
 - Páginas pessoais (`/carrinho/`, `/conta/`) são `private, no-store`.
 
-## Status (19/11/2026, v0.2)
-Pronto: vitrine, frete e prazo, sacola, conta da cliente por CPF.
-Falta: checkout/pagamento (Appmax), pedido no Bling, trocas (TroqueCommerce), fotos no R2, SEO/sitemap, endereços salvos.
+## Enderecos (v0.3, 19/11/2026)
+- Tabela `enderecos` (D1 da loja) presa ao CPF da conta; ate 10, um principal. CEP preenche rua/bairro/cidade/UF
+  pela API CEP dos Correios (painel `/api/loja/cep`, cache 30 dias). Rotas `/api/cep` e `/api/conta/enderecos`.
+
+## Status (19/11/2026, v0.3)
+Pronto: vitrine, frete e prazo, sacola, conta da cliente por CPF, endereços salvos.
+Falta: checkout/pagamento (Appmax), pedido no Bling, trocas (TroqueCommerce), fotos no R2, SEO/sitemap.

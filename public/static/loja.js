@@ -170,3 +170,49 @@
   var sair = $('btn-sair');
   if (sair) sair.addEventListener('click', function () { postJson('/api/conta/sair').then(function () { location.href = '/conta/'; }); });
 })();
+
+// ---- enderecos da conta ----
+(function () {
+  var f = document.getElementById('form-end'); if (!f) return;
+  var $ = function (id) { return document.getElementById(id); };
+  var res = $('end-res'), lista = $('lista-end');
+  var post = function (corpo) { return fetch('/api/conta/enderecos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo), credentials: 'same-origin' }).then(function (r) { return r.json(); }); };
+  var cepIn = $('e-cep');
+  cepIn.addEventListener('input', function () { var d = cepIn.value.replace(/\D/g, '').slice(0, 8); cepIn.value = d.length > 5 ? d.slice(0, 5) + '-' + d.slice(5) : d; if (d.length === 8) buscar(); });
+  var buscar = function () {
+    var d = cepIn.value.replace(/\D/g, ''); if (d.length !== 8) return;
+    res.innerHTML = '<p class="fr-nota">Buscando o CEP…</p>';
+    fetch('/api/cep?cep=' + d).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j.ok) { res.innerHTML = '<p class="fr-erro">' + j.erro + '</p>'; return; }
+      res.innerHTML = '';
+      if (j.rua) $('e-rua').value = j.rua; if (j.bairro) $('e-bairro').value = j.bairro;
+      $('e-cidade').value = j.cidade; $('e-uf').value = j.uf;
+      (j.rua ? $('e-numero') : $('e-rua')).focus();
+    }).catch(function () { res.innerHTML = '<p class="fr-erro">Não conseguimos buscar o CEP. Preencha à mão.</p>'; });
+  };
+  $('e-buscar').addEventListener('click', buscar);
+  var abrir = function (e) {
+    f.hidden = false; res.innerHTML = '';
+    $('e-id').value = e ? e.id : ''; cepIn.value = e ? e.cep.slice(0, 5) + '-' + e.cep.slice(5) : '';
+    $('e-rua').value = e ? e.rua : ''; $('e-numero').value = e ? e.numero : ''; $('e-comp').value = e ? (e.complemento || '') : '';
+    $('e-bairro').value = e ? e.bairro : ''; $('e-cidade').value = e ? e.cidade : ''; $('e-uf').value = e ? e.uf : '';
+    if (e) $('e-dest').value = e.destinatario; $('e-principal').checked = e ? !!e.principal : false;
+    f.scrollIntoView({ behavior: 'smooth', block: 'start' }); cepIn.focus();
+  };
+  $('btn-novo-end').addEventListener('click', function () { abrir(null); });
+  $('e-cancelar').addEventListener('click', function () { f.hidden = true; });
+  var atualizar = function () { location.reload(); };
+  lista.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button'); if (!b) return;
+    if (b.hasAttribute('data-end-editar')) { abrir(JSON.parse(b.closest('.end').getAttribute('data-end'))); return; }
+    if (b.hasAttribute('data-end-remover')) { if (!confirm('Remover este endereço?')) return; post({ acao: 'remover', id: b.getAttribute('data-end-remover') }).then(atualizar); return; }
+    if (b.hasAttribute('data-end-principal')) post({ acao: 'principal', id: b.getAttribute('data-end-principal') }).then(atualizar);
+  });
+  f.addEventListener('submit', function (ev) {
+    ev.preventDefault(); var bt = f.querySelector('.btn'); bt.disabled = true;
+    post({ id: $('e-id').value || null, cep: cepIn.value, rua: $('e-rua').value, numero: $('e-numero').value, complemento: $('e-comp').value,
+      bairro: $('e-bairro').value, cidade: $('e-cidade').value, uf: $('e-uf').value, destinatario: $('e-dest').value, principal: $('e-principal').checked })
+      .then(function (j) { bt.disabled = false; if (!j.ok) { res.innerHTML = '<p class="fr-erro">' + j.erro + '</p>'; return; } atualizar(); })
+      .catch(function () { bt.disabled = false; res.innerHTML = '<p class="fr-erro">Sem conexão. Tente de novo.</p>'; });
+  });
+})();

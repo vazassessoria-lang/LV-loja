@@ -6,8 +6,9 @@ import { MENU, home, paginaCategoria, paginaProduto, paginaBusca, pagina404, pag
 import { COOKIE_SACOLA, lerCookie, cookie, novoId, resumo, alterar, vincularCpf } from './sacola.js';
 import { COOKIE_CONTA, cpfValido, cpfMascarado, clienteLogada } from './conta.js';
 import { painelPost } from './catalogo.js';
+import { listar as listarEnderecos, salvar as salvarEndereco, remover as removerEndereco, tornarPrincipal } from './enderecos.js';
 
-const VERSAO = '0.2.1';
+const VERSAO = '0.3.0';
 
 function html(env, corpo, status, privada, extra) {
   const h = Object.assign({ 'content-type': 'text/html; charset=utf-8', 'cache-control': privada ? 'private, no-store' : 'public, max-age=60' }, extra || {});
@@ -83,6 +84,31 @@ async function rotear(request, env, ctx) {
     if (!r.ok) return json({ ok: false, erro: r.status === 400 ? 'Confira os dados: nome, e-mail e celular com DDD.' : 'Não conseguimos cadastrar agora. Tente de novo em instantes.' }, r.status === 400 ? 400 : 502);
     return json({ ok: true, email_mascarado: r.email_mascarado || null, limite: !!r.limite });
   }
+  // --- enderecos (precisa estar logada) ---
+  if (path === '/api/cep' && request.method === 'GET') {
+    const cep = String(url.searchParams.get('cep') || '').replace(/\D/g, '');
+    if (cep.length !== 8) return json({ ok: false, erro: 'Digite um CEP com 8 números.' }, 400);
+    const req2 = new Request(env.DASHBOARD_URL + '/api/loja/cep?cep=' + cep, { headers: { 'X-Scheduler-Key': env.DASHBOARD_KEY || 'lvprod-9Mn4Vy3Q' } });
+    const r = env.PAINEL ? await env.PAINEL.fetch(req2) : await fetch(req2);
+    const j = await r.json().catch(() => ({ ok: false }));
+    if (r.status === 404) return json({ ok: false, erro: 'CEP não encontrado. Confira os números.' }, 404);
+    if (!j.ok) return json({ ok: false, erro: 'Não conseguimos buscar o CEP agora. Preencha o endereço à mão.' }, 502);
+    return json({ ok: true, rua: j.rua, bairro: j.bairro, cidade: j.cidade, uf: j.uf });
+  }
+  if (path === '/api/conta/enderecos') {
+    const cl = await clienteLogada(env, request);
+    if (!cl) return json({ ok: false, erro: 'Entre na sua conta para salvar endereços.' }, 401);
+    const cpf = cl.cliente.cpf;
+    if (request.method === 'GET') return json({ ok: true, enderecos: await listarEnderecos(env, cpf) });
+    if (request.method === 'POST') {
+      const b = await request.json().catch(() => ({}));
+      let r;
+      if (b.acao === 'remover') r = await removerEndereco(env, cpf, b.id);
+      else if (b.acao === 'principal') r = await tornarPrincipal(env, cpf, b.id);
+      else r = await salvarEndereco(env, cpf, b);
+      return json(Object.assign(r, r.ok ? { enderecos: await listarEnderecos(env, cpf) } : {}), r.ok ? 200 : 400);
+    }
+  }
   if (path === '/api/conta/sair' && request.method === 'POST') {
     const dev = lerCookie(request, COOKIE_CONTA);
     if (dev) { try { await painelPost(env, '/api/loja/conta/sair', { device: dev }); } catch (_) {} }
@@ -117,6 +143,7 @@ async function rotear(request, env, ctx) {
     const cl = await clienteLogada(env, request);
     if (!cl) return html(env, paginaEntrar(env, null), 200, true, lerCookie(request, COOKIE_CONTA) ? { 'set-cookie': LIMPA_CONTA } : null);
     cl.cpf_mascarado = cpfMascarado(cl.cliente.cpf);
+    cl.enderecos = await listarEnderecos(env, cl.cliente.cpf);
     return html(env, paginaConta(env, cl), 200, true);
   }
   if (path === '/conta/entrar' || path === '/conta/entrar/') {
